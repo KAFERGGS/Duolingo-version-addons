@@ -1,0 +1,418 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;700&family=Nunito:wght@400;600;700;800;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:#0d1117}
+::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
+.pixel{font-family:'Press Start 2P',monospace}
+.mono{font-family:'JetBrains Mono',monospace}
+.sans{font-family:'Nunito',sans-serif}
+</style>
+
+<div id="root" style="font-family:'Nunito',sans-serif;background:#0d1117;color:#e6edf3;height:680px;display:flex;flex-direction:column;overflow:hidden;border-radius:12px;border:1px solid #21262d"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useRef,useEffect,useCallback}=React;
+
+const CUR=[
+  {id:"fund",title:"Fundamentos",icon:"⚒️",color:"#C49A6C",bg:"#1a0e00",lessons:[
+    {id:"l0",title:"Bridge v2 y la Jerarquía",xp:50,steps:[
+      {t:"intro",txt:"Bridge v2 es el IDE más avanzado para crear Addons de Minecraft Bedrock. Tiene autocompletado, validación JSON en tiempo real y plantillas listas."},
+      {t:"text",h:"¿Por qué Bridge v2?",b:"A diferencia de editar archivos manualmente, Bridge v2 te muestra errores al instante, autocompleta componentes y valida tu JSON antes de probar en Minecraft."},
+      {t:"code",h:"Estructura de un Addon",lang:"text",c:"mi_addon/\n├── 📦 behavior_pack/      ← LA LÓGICA\n│   ├── manifest.json\n│   ├── entities/\n│   ├── items/\n│   └── functions/\n└── 🎨 resource_pack/       ← EL ARTE\n    ├── manifest.json\n    ├── textures/\n    ├── entity/\n    └── models/"},
+      {t:"tip",txt:"💡 Regla de oro: el BP controla QUÉ hacen las cosas. El RP controla CÓMO se VEN. Esta separación es fundamental en todos los addons profesionales."},
+    ],quiz:{q:"¿En cuál pack añadirías el comportamiento de ataque de un mob?",opts:["Resource Pack (RP)","Behavior Pack (BP)","En ambos packs","Solo con comandos"],ans:1,exp:"¡Correcto! El Behavior Pack contiene toda la lógica: ataques, movimiento, IA, drops. El RP solo define la apariencia visual."}},
+    {id:"l1",title:"manifest.json: La identidad",xp:75,steps:[
+      {t:"intro",txt:"El manifest.json es el documento de identidad de tu addon. Sin él, Minecraft no reconoce que el pack existe. Cada pack (BP y RP) tiene el suyo."},
+      {t:"code",h:"BP/manifest.json",lang:"json",c:'{\n  "format_version": 2,\n  "header": {\n    "name": "Mi Addon BP",\n    "uuid": "aaaa-bbbb-cccc-dddd",\n    "version": [1, 0, 0],\n    "min_engine_version": [1, 20, 0]\n  },\n  "modules": [\n    { "type": "data", "uuid": "ffff-gggg-hhhh-iiii", "version": [1, 0, 0] }\n  ],\n  "dependencies": [\n    { "uuid": "UUID-DEL-RP-AQUI", "version": [1, 0, 0] }\n  ]\n}'},
+      {t:"tip",txt:"💡 El UUID en 'dependencies' del BP debe ser el mismo UUID del 'header' del RP. Así Minecraft los vincula como un addon completo. Bridge v2 genera y vincula los UUIDs automáticamente."},
+    ],quiz:{q:"¿Qué debe contener el campo 'dependencies' del Behavior Pack?",opts:["El UUID del header del Resource Pack","La versión de Minecraft","El nombre del addon","La lista de entidades"],ans:0,exp:"¡Exacto! El 'dependencies' del BP referencia el UUID del header del RP. Así Minecraft sabe que van juntos como un addon completo."}},
+  ]},
+  {id:"tex",title:"Texturas & Arte",icon:"🎨",color:"#57C93F",bg:"#031200",lessons:[
+    {id:"l2",title:"Tu primer ítem personalizado",xp:100,steps:[
+      {t:"intro",txt:"¡Vamos a crear un ítem desde cero! Necesitas: 1) JSON del ítem en BP, 2) textura PNG en RP, y 3) registrarla en item_texture.json."},
+      {t:"code",h:"BP/items/esmeralda_magica.json",lang:"json",c:'{\n  "format_version": "1.20.0",\n  "minecraft:item": {\n    "description": {\n      "identifier": "miaddon:esmeralda_magica",\n      "category": "items"\n    },\n    "components": {\n      "minecraft:max_stack_size": 64,\n      "minecraft:icon": {\n        "texture": "esmeralda_magica"\n      },\n      "minecraft:display_name": {\n        "value": "Esmeralda Mágica"\n      }\n    }\n  }\n}'},
+      {t:"code",h:"RP/textures/item_texture.json",lang:"json",c:'{\n  "resource_pack_name": "Mi Addon RP",\n  "texture_name": "atlas.items",\n  "texture_data": {\n    "esmeralda_magica": {\n      "textures": "textures/items/esmeralda_magica"\n    }\n  }\n}'},
+      {t:"tip",txt:"💡 En Bridge v2: clic derecho en carpeta 'items' → 'New File' → plantilla 'Item'. Bridge autocompleta la estructura base. ¡Solo rellena el identifier y el nombre!"},
+    ],quiz:{q:"El valor de 'texture' en minecraft:icon debe coincidir con...",opts:["El nombre del archivo .png","La clave en item_texture.json","El identifier del ítem","La ruta completa al PNG"],ans:1,exp:"¡Perfecto! Es la clave en item_texture.json (ej: 'esmeralda_magica'), no la ruta directa. Ese archivo actúa como diccionario que traduce claves a rutas de imagen."}},
+    {id:"l3",title:"Bloques personalizados",xp:100,steps:[
+      {t:"intro",txt:"Los bloques tienen propiedades únicas: dureza, resistencia a explosiones, emisión de luz. ¡Aprende a crear el tuyo con material rendering personalizado!"},
+      {t:"code",h:"BP/blocks/cristal_arcano.json",lang:"json",c:'{\n  "format_version": "1.20.0",\n  "minecraft:block": {\n    "description": {\n      "identifier": "miaddon:cristal_arcano"\n    },\n    "components": {\n      "minecraft:destructible_by_mining": {\n        "seconds_to_destroy": 2.5\n      },\n      "minecraft:material_instances": {\n        "*": {\n          "texture": "cristal_arcano",\n          "render_method": "blend"\n        }\n      },\n      "minecraft:light_emission": 8,\n      "minecraft:map_color": "#00ffaa"\n    }\n  }\n}'},
+      {t:"tip",txt:"💡 render_method: 'opaque' = sólido normal | 'alpha_test' = bordes transparentes (hojas) | 'blend' = semitransparente (cristal, agua). Elige según tu textura."},
+    ],quiz:{q:"¿Qué render_method usarías para un bloque de hojas (bordes transparentes, sin semitransparencia)?",opts:["blend","opaque","alpha_test","transparent"],ans:2,exp:"¡Correcto! 'alpha_test' es para texturas con píxeles completamente transparentes u opacos. 'blend' causa problemas de renderizado para hojas o verjas."}},
+  ]},
+  {id:"mobs",title:"Entidades & Mobs",icon:"🐉",color:"#E74C3C",bg:"#1a0000",lessons:[
+    {id:"l4",title:"Anatomía de una entidad",xp:125,steps:[
+      {t:"intro",txt:"Crear un mob requiere archivos en BP y RP. El BP define su lógica y comportamiento, el RP define su apariencia. ¡Este es el corazón del desarrollo!"},
+      {t:"code",h:"BP/entities/dragon_esmeralda.json",lang:"json",c:'{\n  "format_version": "1.18.0",\n  "minecraft:entity": {\n    "description": {\n      "identifier": "miaddon:dragon_esmeralda",\n      "is_spawnable": true,\n      "is_summonable": true\n    },\n    "components": {\n      "minecraft:health": { "value": 80, "max": 80 },\n      "minecraft:movement": { "value": 0.35 },\n      "minecraft:attack": { "damage": 8 },\n      "minecraft:behavior.hurt_by_target": { "priority": 1 },\n      "minecraft:behavior.nearest_attackable_target": {\n        "priority": 2,\n        "entity_types": [{ "filters": {\n          "test": "is_family", "subject": "other", "value": "player"\n        }}]\n      },\n      "minecraft:behavior.melee_attack": { "priority": 3 },\n      "minecraft:behavior.random_stroll": { "priority": 6 }\n    }\n  }\n}'},
+      {t:"tip",txt:"💡 Priority funciona inversamente: número más bajo = mayor prioridad. El mob siempre intenta ejecutar primero el behavior con el número MÁS BAJO disponible."},
+    ],quiz:{q:"¿Qué behavior añadirías para que un mob HUYA del jugador?",opts:["minecraft:behavior.melee_attack","minecraft:behavior.float","minecraft:behavior.flee_sun","minecraft:behavior.avoid_mob_type"],ans:3,exp:"¡Exacto! 'avoid_mob_type' hace que la entidad huya de cierto tipo. Es el mismo behavior que usa el Creeper para alejarse de los gatos y Ocelotes."}},
+    {id:"l5",title:"Loot Tables: Drops personalizados",xp:125,steps:[
+      {t:"intro",txt:"Las loot tables definen qué sueltan los mobs al morir. Puedes crear drops únicos con probabilidades personalizadas usando pools ponderados."},
+      {t:"code",h:"BP/loot_tables/dragon_drops.json",lang:"json",c:'{\n  "pools": [\n    {\n      "rolls": 1,\n      "entries": [\n        {\n          "type": "item",\n          "name": "miaddon:esmeralda_magica",\n          "weight": 100,\n          "functions": [{\n            "function": "set_count",\n            "count": { "min": 1, "max": 3 }\n          }]\n        }\n      ]\n    },\n    {\n      "rolls": 1,\n      "entries": [\n        { "type": "item", "name": "minecraft:diamond", "weight": 30 },\n        { "type": "empty", "weight": 70 }\n      ]\n    }\n  ]\n}'},
+      {t:"tip",txt:"💡 Para vincular la loot table a tu entidad, añade en el BP: \"minecraft:loot\": { \"table\": \"loot_tables/dragon_drops.json\" }"},
+    ],quiz:{q:"Con weight 30 (diamante) y weight 70 (vacío), ¿cuál es la probabilidad de que caiga un diamante?",opts:["70%","50%","30%","10%"],ans:2,exp:"¡Correcto! Los pesos son relativos: 30/(30+70)=30%. Funciona como una lotería ponderada: más boletos = más probabilidad."}},
+  ]},
+  {id:"adv",title:"Mecánicas Avanzadas",icon:"⚡",color:"#9B59B6",bg:"#0d0018",lessons:[
+    {id:"l6",title:"Funciones .mcfunction",xp:150,steps:[
+      {t:"intro",txt:"Las funciones .mcfunction ejecutan múltiples comandos en secuencia con un solo /function. ¡Invoca con efectos, sonidos y mobs en una sola llamada!"},
+      {t:"code",h:"BP/functions/ritual_invocacion.mcfunction",lang:"bash",c:"# Efectos visuales del ritual\nparticle minecraft:large_explosion ~ ~1 ~\nparticle minecraft:dragon_breath_fire ~ ~1 ~\n\n# Sonido épico para todos los jugadores\nplaysound mob.enderdragon.growl @a ~ ~ ~ 1 1\n\n# Invocar el dragón sobre el jugador\nsummon miaddon:dragon_esmeralda ~ ~2 ~\n\n# Mensaje dramático en pantalla\ntitle @a actionbar {\"text\":\"§c¡El Dragón Esmeralda despierta!\",\"bold\":true}"},
+      {t:"tip",txt:"💡 Para llamar esta función desde un ítem, usa en el BP del ítem: \"run_command\": {\"command\": [\"function ritual_invocacion\"]}"},
+    ],quiz:{q:"¿Cómo ejecutarías 'BP/functions/mi_ritual.mcfunction' en el juego?",opts:["/run mi_ritual","/execute function mi_ritual","/function mi_ritual","/mcfunction mi_ritual"],ans:2,exp:"¡Correcto! Es /function + nombre sin extensión .mcfunction. Si está en subcarpeta: /function subcarpeta/mi_ritual"}},
+    {id:"l7",title:"Scripting API: JavaScript en Minecraft",xp:200,steps:[
+      {t:"intro",txt:"La Scripting API es el nivel élite del addon development. Con JavaScript puedes crear mecánicas imposibles de lograr solo con JSON y comandos."},
+      {t:"code",h:"Añadir al manifest.json del BP",lang:"json",c:'{\n  "modules": [{\n    "type": "script",\n    "language": "javascript",\n    "uuid": "tu-uuid-aqui",\n    "version": [1, 0, 0],\n    "entry": "scripts/main.js"\n  }],\n  "dependencies": [{\n    "module_name": "@minecraft/server",\n    "version": "1.8.0"\n  }]\n}'},
+      {t:"code",h:"BP/scripts/main.js — Detectar muerte del dragón",lang:"javascript",c:'import { world, system } from "@minecraft/server";\n\nworld.afterEvents.entityDie.subscribe((event) => {\n  const { deadEntity, damageSource } = event;\n  \n  // Solo nuestro dragón personalizado\n  if (deadEntity.typeId !== "miaddon:dragon_esmeralda") return;\n  \n  const killer = damageSource.damagingEntity;\n  if (!killer || killer.typeId !== "minecraft:player") return;\n  \n  // Dar recompensa: 5 esmeraldas mágicas\n  killer.runCommand("give @s miaddon:esmeralda_magica 5");\n  \n  // Anunciar al mundo\n  system.run(() => {\n    world.sendMessage(`§6§l¡${killer.name} venció al Dragón Esmeralda!`);\n  });\n});'},
+      {t:"tip",txt:"💡 En Bridge v2, instala la extensión 'Minecraft Bedrock API Types' para tener autocompletado completo de toda la Scripting API. ¡Indispensable para desarrollo serio!"},
+    ],quiz:{q:"¿Qué evento de la Scripting API detecta cuando un jugador rompe un bloque?",opts:["world.afterEvents.entityDie","world.afterEvents.playerBreakBlock","system.run(() => {})","world.beforeEvents.itemUse"],ans:1,exp:"¡Exacto! 'playerBreakBlock' se activa al romper un bloque y da info del bloque roto, la herramienta usada y el jugador que lo rompió."}},
+  ]},
+];
+
+const TOTAL_XP = CUR.reduce((a,m)=>a+m.lessons.reduce((b,l)=>b+l.xp,0),0);
+
+function CodeBlock({c,h,lang}){
+  const[cp,setCp]=useState(false);
+  const langColors={json:{p:"#1E1E2E",str:"#A6E3A1",key:"#89DCEB",num:"#FAB387",sym:"#CDD6F4"},javascript:{p:"#1E1E2E",kw:"#CBA6F7",fn:"#89B4FA",str:"#A6E3A1",sym:"#CDD6F4"},bash:{p:"#1E1E2E",c:"#6C7086",cmd:"#89B4FA",str:"#A6E3A1"},text:{p:"#161822",d:"#CDD6F4"}};
+  const colors=langColors[lang]||langColors.text;
+  return(
+    <div style={{background:colors.p||"#1E1E2E",borderRadius:8,overflow:"hidden",margin:"10px 0",border:"1px solid #313244",fontSize:12}}>
+      {h&&<div style={{background:"#181825",padding:"5px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #313244"}}>
+        <span style={{color:"#6C7086",fontFamily:"JetBrains Mono,monospace",fontSize:11}}>{h}</span>
+        <button onClick={()=>{navigator.clipboard.writeText(c);setCp(true);setTimeout(()=>setCp(false),2000);}} style={{background:"none",border:"none",color:cp?"#A6E3A1":"#6C7086",cursor:"pointer",fontSize:10,fontFamily:"JetBrains Mono,monospace",padding:"2px 6px"}}>
+          {cp?"✓ copiado":"copiar"}
+        </button>
+      </div>}
+      <pre style={{margin:0,padding:"12px 14px",overflowX:"auto",fontFamily:"JetBrains Mono,monospace",fontSize:12,lineHeight:1.65,color:"#CDD6F4",whiteSpace:"pre"}}>{c}</pre>
+    </div>
+  );
+}
+
+function renderChat(content){
+  const parts=content.split(/(```[\w]*\n[\s\S]*?```)/g);
+  return parts.map((part,i)=>{
+    const m=part.match(/```([\w]*)\n([\s\S]*?)```/);
+    if(m)return <CodeBlock key={i} lang={m[1]} c={m[2].trim()}/>;
+    return <span key={i} style={{whiteSpace:"pre-wrap",lineHeight:1.6}}>{part}</span>;
+  });
+}
+
+function App(){
+  const[mi,setMi]=useState(0);
+  const[li,setLi]=useState(0);
+  const[si,setSi]=useState(0);
+  const[done,setDone]=useState(new Set());
+  const[xp,setXp]=useState(0);
+  const[streak,setStreak]=useState(0);
+  const[quiz,setQuiz]=useState(false);
+  const[qsel,setQsel]=useState(null);
+  const[qdone,setQdone]=useState(false);
+  const[chatOpen,setChatOpen]=useState(true);
+  const[msgs,setMsgs]=useState([{r:"a",c:"¡Hola, desarrollador! Soy **Bridge-Bot** 🤖\n\nPregúntame cualquier cosa sobre Minecraft Bedrock Addons. Por ejemplo:\n\n• \"¿Cómo hago que un mob suelte un ítem especial si lo matas con una espada de esmeralda?\"\n• \"Explícame cómo crear partículas personalizadas\"\n• \"¿Cómo creo un mob que cure a jugadores cercanos?\"\n\n¡Pregunta lo que quieras!"}]);
+  const[inp,setInp]=useState("");
+  const[loading,setLoading]=useState(false);
+  const[toast,setToast]=useState(null);
+  const chatEnd=useRef(null);
+  const inputRef=useRef(null);
+
+  const mod=CUR[mi];
+  const les=mod.lessons[li];
+  const step=les.steps[si];
+  const key=`${mi}-${li}`;
+  const isDone=done.has(key);
+  const totalDone=[...done].length;
+  const totalLessons=CUR.reduce((a,m)=>a+m.lessons.length,0);
+
+  useEffect(()=>{chatEnd.current?.scrollIntoView({behavior:"smooth"});},[msgs,loading]);
+
+  const showToast=(msg,col="#57C93F")=>{
+    setToast({msg,col});
+    setTimeout(()=>setToast(null),3000);
+  };
+
+  const goLesson=(newMi,newLi)=>{
+    setMi(newMi);setLi(newLi);setSi(0);setQuiz(false);setQsel(null);setQdone(false);
+  };
+
+  const goNext=()=>{
+    if(si<les.steps.length-1)setSi(s=>s+1);
+    else setQuiz(true);
+  };
+
+  const submitQuiz=()=>{
+    if(qsel===null)return;
+    setQdone(true);
+    if(qsel===les.quiz.ans&&!isDone){
+      const nd=new Set(done);nd.add(key);setDone(nd);
+      setXp(x=>x+les.xp);
+      setStreak(s=>s+1);
+      showToast(`+${les.xp} XP ¡Correcto! 🎉`,"#57C93F");
+    } else if(qsel!==les.quiz.ans){
+      setStreak(0);
+    }
+  };
+
+  const nextLesson=()=>{
+    setQuiz(false);setQsel(null);setQdone(false);
+    if(li<mod.lessons.length-1)goLesson(mi,li+1);
+    else if(mi<CUR.length-1)goLesson(mi+1,0);
+  };
+
+  const send=async()=>{
+    if(!inp.trim()||loading)return;
+    const txt=inp.trim();setInp("");
+    setMsgs(m=>[...m,{r:"u",c:txt}]);
+    setLoading(true);
+    try{
+      const history=msgs.slice(-8).map(m=>({role:m.r==="u"?"user":"assistant",content:m.c}));
+      const res=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-20250514",
+          max_tokens:1000,
+          system:`Eres "Bridge-Bot", un mentor experto y entusiasta en Minecraft Bedrock Add-On Development con Bridge v2.\n\nCuando el usuario pide ayuda con una mecánica:\n1. 🎯 Explica la lógica en términos simples\n2. 📁 Indica qué archivos crear en Bridge v2 y en qué carpeta (BP o RP)\n3. 💻 Proporciona el código JSON o JavaScript necesario en bloques de código\n4. 📝 Explica las partes clave del código\n\nResponde SIEMPRE en español. Usa emojis para dinamismo. Sé motivador y directo. Formatea código con \`\`\`json, \`\`\`javascript, etc.`,
+          messages:[...history,{role:"user",content:txt}]
+        })
+      });
+      const data=await res.json();
+      const reply=data.content?.[0]?.text||"Error al obtener respuesta.";
+      setMsgs(m=>[...m,{r:"a",c:reply}]);
+    }catch(e){
+      setMsgs(m=>[...m,{r:"a",c:"❌ Error de conexión. Verifica tu red e intenta de nuevo."}]);
+    }
+    setLoading(false);
+  };
+
+  const xpPct=Math.round((xp/TOTAL_XP)*100);
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",position:"relative"}}>
+
+      {/* TOAST */}
+      {toast&&<div style={{position:"absolute",top:12,left:"50%",transform:"translateX(-50%)",background:toast.col,color:"#fff",padding:"8px 20px",borderRadius:20,zIndex:200,fontWeight:800,fontSize:13,boxShadow:"0 4px 20px rgba(0,0,0,0.5)",fontFamily:"Nunito,sans-serif",whiteSpace:"nowrap"}}>{toast.msg}</div>}
+
+      {/* HEADER */}
+      <div style={{background:"#161B22",borderBottom:"1px solid #21262D",padding:"0 16px",display:"flex",alignItems:"center",gap:12,height:52,flexShrink:0}}>
+        <span className="pixel" style={{color:"#57C93F",fontSize:10}}>⛏</span>
+        <span className="pixel" style={{color:"#e6edf3",fontSize:8,letterSpacing:"-0.5px"}}>Bridge Academy</span>
+        <div style={{flex:1,display:"flex",alignItems:"center",gap:8,maxWidth:300}}>
+          <span style={{fontSize:11,color:"#FFD700",fontWeight:800}}>⭐{xp}</span>
+          <div style={{flex:1,height:7,background:"#30363D",borderRadius:4,overflow:"hidden"}}>
+            <div style={{width:`${xpPct}%`,height:"100%",background:"linear-gradient(90deg,#FFD700,#FFA500)",borderRadius:4,transition:"width 0.6s ease"}}/>
+          </div>
+          <span style={{fontSize:11,color:"#8B949E"}}>{xpPct}%</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <div style={{background:streak>0?"#2D1C00":"#21262D",border:`1px solid ${streak>0?"#FFA500":"#30363D"}`,borderRadius:8,padding:"3px 10px",display:"flex",alignItems:"center",gap:5}}>
+            <span style={{fontSize:13}}>🔥</span>
+            <span className="pixel" style={{color:streak>0?"#FFA500":"#6E7681",fontSize:8}}>{streak}</span>
+          </div>
+          <div style={{background:"#21262D",border:"1px solid #30363D",borderRadius:8,padding:"3px 10px",fontSize:11,color:"#8B949E"}}>
+            {totalDone}/{totalLessons} ✓
+          </div>
+        </div>
+        <button onClick={()=>setChatOpen(o=>!o)} style={{background:chatOpen?"#1F2D1F":"#21262D",border:`1px solid ${chatOpen?"#57C93F":"#30363D"}`,borderRadius:8,padding:"4px 10px",color:chatOpen?"#57C93F":"#8B949E",cursor:"pointer",fontSize:11,fontFamily:"Nunito,sans-serif",fontWeight:700}}>
+          {chatOpen?"◀ Chat":"Chat ▶"}
+        </button>
+      </div>
+
+      {/* BODY */}
+      <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+
+        {/* SIDEBAR */}
+        <div style={{width:175,background:"#0D1117",borderRight:"1px solid #21262D",overflowY:"auto",flexShrink:0}}>
+          {CUR.map((mod,mIdx)=>(
+            <div key={mod.id}>
+              <div style={{padding:"10px 12px 6px",display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:12}}>{mod.icon}</span>
+                <span style={{fontWeight:800,fontSize:10,color:mod.color,letterSpacing:"0.3px"}}>{mod.title}</span>
+              </div>
+              {mod.lessons.map((les,lIdx)=>{
+                const k=`${mIdx}-${lIdx}`;
+                const isAct=mi===mIdx&&li===lIdx;
+                const isD=done.has(k);
+                return(
+                  <div key={les.id} onClick={()=>goLesson(mIdx,lIdx)} style={{padding:"7px 12px 7px 20px",cursor:"pointer",background:isAct?"#1C2128":"transparent",borderLeft:`3px solid ${isAct?mod.color:"transparent"}`,transition:"all 0.15s"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:5}}>
+                      <span style={{fontSize:11}}>{isD?"✅":"⬜"}</span>
+                      <span style={{fontSize:11,color:isAct?mod.color:isD?"#57C93F":"#8B949E",fontWeight:isAct?800:600,lineHeight:1.3}}>{les.title}</span>
+                    </div>
+                    <div style={{marginTop:2,marginLeft:18,fontSize:10,color:"#4B5563"}}>+{les.xp} XP</div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* CONTENT */}
+        <div style={{flex:1,overflowY:"auto",padding:"20px 24px"}}>
+          
+          {/* Lesson Header */}
+          <div style={{marginBottom:16}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+              <span style={{fontSize:18}}>{mod.icon}</span>
+              <span style={{color:mod.color,fontWeight:800,fontSize:11,textTransform:"uppercase",letterSpacing:"1px"}}>{mod.title}</span>
+            </div>
+            <h2 className="pixel" style={{color:"#e6edf3",fontSize:11,lineHeight:1.5,marginBottom:8}}>{les.title}</h2>
+            {/* Step dots */}
+            <div style={{display:"flex",gap:5,alignItems:"center",marginBottom:12}}>
+              {les.steps.map((_,i)=>(
+                <div key={i} onClick={()=>setSi(i)} style={{width:i===si?20:7,height:7,borderRadius:4,background:i<si?"#57C93F":i===si?mod.color:"#30363D",cursor:"pointer",transition:"all 0.2s"}}/>
+              ))}
+              <div style={{width:7,height:7,borderRadius:4,background:done.has(key)?"#FFD700":"#30363D"}}/>
+              <span style={{color:"#6E7681",fontSize:10,marginLeft:4}}>{si+1}/{les.steps.length}</span>
+            </div>
+          </div>
+
+          {/* Step Content */}
+          <div style={{marginBottom:20}}>
+            {step.t==="intro"&&(
+              <div style={{background:`linear-gradient(135deg, ${mod.bg}, #0D1117)`,border:`1px solid ${mod.color}33`,borderRadius:12,padding:20,marginBottom:12}}>
+                <div style={{display:"flex",gap:3,marginBottom:8}}>{[...Array(3)].map((_,i)=><div key={i} style={{width:10,height:10,borderRadius:2,background:["#FF5F57","#FFBD2E","#28C840"][i]}}/>)}</div>
+                <p style={{fontSize:15,lineHeight:1.7,color:"#CDD6F4",fontWeight:600}}>{step.txt}</p>
+              </div>
+            )}
+            {step.t==="text"&&(
+              <div style={{marginBottom:12}}>
+                <h3 style={{color:mod.color,fontSize:13,fontWeight:800,marginBottom:8}}>{step.h}</h3>
+                <p style={{fontSize:14,lineHeight:1.75,color:"#C9D1D9"}}>{step.b}</p>
+              </div>
+            )}
+            {step.t==="code"&&<CodeBlock c={step.c} h={step.h} lang={step.lang}/>}
+            {step.t==="tip"&&(
+              <div style={{background:"#161200",border:"1px solid #856404",borderRadius:8,padding:"12px 16px",display:"flex",gap:10,marginBottom:12}}>
+                <span style={{fontSize:18,flexShrink:0}}>💡</span>
+                <p style={{fontSize:13,lineHeight:1.7,color:"#D9B84B",fontWeight:600}}>{step.txt}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Navigation */}
+          <div style={{display:"flex",gap:10,justifyContent:"space-between"}}>
+            <button onClick={()=>si>0&&setSi(s=>s-1)} disabled={si===0} style={{background:si===0?"#161B22":"#21262D",border:"1px solid #30363D",borderRadius:8,padding:"10px 18px",color:si===0?"#4B5563":"#e6edf3",cursor:si===0?"not-allowed":"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:13}}>
+              ← Anterior
+            </button>
+            <button onClick={goNext} style={{background:mod.color,border:"none",borderRadius:8,padding:"10px 22px",color:"#0D1117",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:900,fontSize:13}}>
+              {si<les.steps.length-1?"Siguiente →":"¡Al Desafío Picopiedra! 🪨"}
+            </button>
+          </div>
+        </div>
+
+        {/* CHAT PANEL */}
+        {chatOpen&&(
+          <div style={{width:280,borderLeft:"1px solid #21262D",display:"flex",flexDirection:"column",background:"#0D1117",flexShrink:0}}>
+            <div style={{padding:"10px 14px",borderBottom:"1px solid #21262D",background:"#161B22"}}>
+              <div style={{display:"flex",alignItems:"center",gap:7}}>
+                <div style={{width:28,height:28,borderRadius:8,background:"#1F2D1F",border:"1px solid #57C93F",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>🤖</div>
+                <div>
+                  <div style={{fontWeight:800,fontSize:12,color:"#57C93F"}}>Bridge-Bot</div>
+                  <div style={{fontSize:10,color:"#6E7681"}}>Asistente IA de Addons</div>
+                </div>
+              </div>
+            </div>
+            <div style={{flex:1,overflowY:"auto",padding:12,display:"flex",flexDirection:"column",gap:10}}>
+              {msgs.map((m,i)=>(
+                <div key={i} style={{display:"flex",gap:8,flexDirection:m.r==="u"?"row-reverse":"row",alignItems:"flex-start"}}>
+                  <div style={{width:24,height:24,borderRadius:6,background:m.r==="u"?"#1C2128":"#1F2D1F",border:`1px solid ${m.r==="u"?"#30363D":"#57C93F"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,flexShrink:0}}>
+                    {m.r==="u"?"👤":"🤖"}
+                  </div>
+                  <div style={{background:m.r==="u"?"#1C2128":"#161B22",border:`1px solid ${m.r==="u"?"#30363D":"#21262D"}`,borderRadius:8,padding:"8px 10px",maxWidth:"85%",fontSize:12,lineHeight:1.55,color:m.r==="u"?"#CDD6F4":"#C9D1D9"}}>
+                    {renderChat(m.c)}
+                  </div>
+                </div>
+              ))}
+              {loading&&(
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <div style={{width:24,height:24,borderRadius:6,background:"#1F2D1F",border:"1px solid #57C93F",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}}>🤖</div>
+                  <div style={{background:"#161B22",border:"1px solid #21262D",borderRadius:8,padding:"8px 12px",display:"flex",gap:4}}>
+                    {[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:"#57C93F",animation:`pulse 1.2s ease-in-out ${i*0.3}s infinite`}}/>)}
+                  </div>
+                </div>
+              )}
+              <div ref={chatEnd}/>
+            </div>
+            <div style={{padding:10,borderTop:"1px solid #21262D"}}>
+              <div style={{display:"flex",gap:6}}>
+                <input ref={inputRef} value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&send()} placeholder="Pregunta a Bridge-Bot..." style={{flex:1,background:"#161B22",border:"1px solid #30363D",borderRadius:8,padding:"8px 10px",color:"#e6edf3",fontFamily:"Nunito,sans-serif",fontSize:12,outline:"none"}}/>
+                <button onClick={send} disabled={loading||!inp.trim()} style={{background:loading||!inp.trim()?"#21262D":"#57C93F",border:"none",borderRadius:8,width:36,cursor:loading||!inp.trim()?"not-allowed":"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",transition:"background 0.15s"}}>
+                  ➤
+                </button>
+              </div>
+              <div style={{marginTop:6,display:"flex",gap:4,flexWrap:"wrap"}}>
+                {["mob con drop especial","partículas custom","item con habilidad"].map(q=>(
+                  <button key={q} onClick={()=>{setInp(q);inputRef.current?.focus();}} style={{background:"#161B22",border:"1px solid #30363D",borderRadius:12,padding:"2px 8px",color:"#8B949E",cursor:"pointer",fontSize:9,fontFamily:"Nunito,sans-serif"}}>
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* QUIZ MODAL */}
+      {quiz&&(
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}}>
+          <div style={{background:"#161B22",border:"1px solid #30363D",borderRadius:16,padding:28,maxWidth:460,width:"90%",boxShadow:"0 20px 60px rgba(0,0,0,0.7)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+              <span style={{fontSize:28}}>🪨</span>
+              <div>
+                <div className="pixel" style={{color:"#FFD700",fontSize:8}}>DESAFÍO PICOPIEDRA</div>
+                <div style={{color:"#6E7681",fontSize:11,marginTop:2}}>+{les.xp} XP si respondes correcto</div>
+              </div>
+            </div>
+            <p style={{fontSize:14,fontWeight:700,color:"#e6edf3",marginBottom:16,lineHeight:1.5}}>{les.quiz.q}</p>
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
+              {les.quiz.opts.map((opt,i)=>{
+                let bg="#1C2128",border="#30363D",col="#C9D1D9";
+                if(qdone){
+                  if(i===les.quiz.ans){bg="#0F2009";border="#57C93F";col="#57C93F";}
+                  else if(i===qsel&&qsel!==les.quiz.ans){bg="#1A0505";border="#E74C3C";col="#E74C3C";}
+                }else if(qsel===i){bg="#1C2D3A";border="#0EA5E9";col="#7DD3FC";}
+                return(
+                  <button key={i} onClick={()=>!qdone&&setQsel(i)} style={{background:bg,border:`1px solid ${border}`,borderRadius:8,padding:"11px 14px",textAlign:"left",cursor:qdone?"default":"pointer",color:col,fontFamily:"Nunito,sans-serif",fontWeight:600,fontSize:13,display:"flex",gap:10,alignItems:"center",transition:"all 0.15s"}}>
+                    <span style={{width:22,height:22,borderRadius:6,background:"#21262D",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,flexShrink:0}}>{["A","B","C","D"][i]}</span>
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+            {qdone&&(
+              <div style={{background:qsel===les.quiz.ans?"#0F2009":"#1A0505",border:`1px solid ${qsel===les.quiz.ans?"#57C93F":"#E74C3C"}`,borderRadius:8,padding:"10px 14px",marginBottom:14}}>
+                <p style={{fontSize:12,color:qsel===les.quiz.ans?"#A6E3A1":"#F38BA8",lineHeight:1.55}}>{les.quiz.exp}</p>
+              </div>
+            )}
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              {!qdone?(
+                <button onClick={submitQuiz} disabled={qsel===null} style={{background:qsel!==null?"#57C93F":"#21262D",border:"none",borderRadius:8,padding:"10px 22px",color:qsel!==null?"#0D1117":"#4B5563",cursor:qsel!==null?"pointer":"not-allowed",fontFamily:"Nunito,sans-serif",fontWeight:900,fontSize:13}}>
+                  Confirmar respuesta
+                </button>
+              ):(
+                <>
+                  <button onClick={()=>{setQuiz(false);setQsel(null);setQdone(false);}} style={{background:"#21262D",border:"1px solid #30363D",borderRadius:8,padding:"10px 16px",color:"#8B949E",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:12}}>
+                    Ver lección
+                  </button>
+                  <button onClick={nextLesson} style={{background:mod.color,border:"none",borderRadius:8,padding:"10px 20px",color:"#0D1117",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:900,fontSize:13}}>
+                    Siguiente lección →
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes pulse{0%,100%{opacity:0.3;transform:scale(0.8)}50%{opacity:1;transform:scale(1.1)}}
+      `}</style>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
